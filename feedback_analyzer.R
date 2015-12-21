@@ -69,8 +69,8 @@ for (comment in comments) {
 
 ## Find and report import n-grams
 message("Performing association analysis")
-liked_words <- c("like", "learn", "interest", addLikedWords)
-improve_words <- c("improve", "more", "less", addImprovedWords)
+liked_words <- c("like", "learn", "interest", "teaching_assistant", "prelab", addLikedWords)
+improve_words <- c("improve", "more", "less", "teaching_assistant", "prelab", addImprovedWords)
 cor <- 0.25
 liked_p <- computePValue(cor, liked_td$ncol)
 improved_p <- computePValue(cor, improved_td$ncol)

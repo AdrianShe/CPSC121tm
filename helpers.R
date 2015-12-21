@@ -7,15 +7,17 @@ processCorpus <- function(corpus) {
   corpus <- tm_map(corpus, removePunctuation)
   corpus <- tm_map(corpus, removeWords, c(stopwords("english"),  c("nothing", "na", "none", "yes", "no", "everything", "hey")))
   corpus <- tm_map(corpus, stemDocument)
-  corpus <- tm_map(corpus, stripWhitespace)
-  
   ## Combine together words with similar meanings
   for (j in seq(corpus)) {
-    corpus[[j]] <- gsub("magic box", "magic_box", corpus[[j]])
-    corpus[[j]] <- gsub("teaching assistant", "teaching_assistant", corpus[[j]])
+    corpus[[j]] <- gsub("magic box", "magic_box ", corpus[[j]])
+    corpus[[j]] <- gsub("teaching assistant", "teaching_assistant ", corpus[[j]])
     corpus[[j]] <- gsub("regular express", "regular_expression ", corpus[[j]])
     corpus[[j]] <- gsub("regex", "regular_expression ", corpus[[j]])
+    corpus[[j]] <- gsub("coding theory", "coding_theory ", corpus[[j]])
+    corpus[[j]] <- gsub("working computer", "working_computer  ", corpus[[j]])
+    corpus[[j]] <- gsub("paper computer", "paper_computer  ", corpus[[j]])
   }
+  corpus <- tm_map(corpus, stripWhitespace)
   corpus <- tm_map(corpus, PlainTextDocument)
   return(corpus)
 }
