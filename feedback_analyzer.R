@@ -8,47 +8,25 @@
 #+ echo=F, eval=T, message=F, warning=F
 library(tm)
 library(RWeka)
+source("helpers.R")
 options(mc.cores = 1)
 options(java.parameters = "-Xmx2048m")
 
 ## Reading the text
-
 message("Reading and extracting text")
 spreadsheet <- read.csv(spreadsheetName, na.strings = "", stringsAsFactors = FALSE)
-
-## Extract appreciate colum
-## Locate and read the file
 spreadsheet <- spreadsheet[!(spreadsheet$Timestamp %in% c("AVG", "MED", "SDEV")),]
 liked <- spreadsheet$What.did.you.like.most.about.the.lab.
 improvement <- spreadsheet$How.do.you.think.the.lab.could.be.best.improved.
 
-## Remove the non-comment ones
+## Remove the non-comment items
 liked <- liked[!is.na(liked)]
 improvement <- improvement[!is.na(improvement)]
 
 ## Build a vector corpus and process
 liked_corpus <- Corpus(VectorSource(liked))
 improvement_corpus <- Corpus(VectorSource(improvement))
-
 message("Processing text")
-## Process the text
-processCorpus <- function(corpus) {
-  corpus <- tm_map(corpus, content_transformer(tolower))
-  corpus <- tm_map(corpus, removePunctuation)
-  corpus <- tm_map(corpus, removeWords, c(stopwords("english"),  c("nothing", "na", "none", "yes", "no", "everything", "hey")))
-  corpus <- tm_map(corpus, stemDocument)
-  corpus <- tm_map(corpus, stripWhitespace)
-  
-  ## Combine together words with similar meanings
-  for (j in seq(corpus)) {
-    corpus[[j]] <- gsub("magic box", "magic_box", corpus[[j]])
-    corpus[[j]] <- gsub("teaching assistant", "teaching_assistant", corpus[[j]])
-    corpus[[j]] <- gsub("regular express", "regular_expression ", corpus[[j]])
-    corpus[[j]] <- gsub("regex", "regular_expression ", corpus[[j]])
-  }
-  corpus <- tm_map(corpus, PlainTextDocument)
-  return(corpus)
-}
 liked_corpus <- processCorpus(liked_corpus)
 improvement_corpus <- processCorpus(improvement_corpus)
 
@@ -59,37 +37,8 @@ improved_td <- TermDocumentMatrix(improvement_corpus)
 liked_ngrams <- TermDocumentMatrix(liked_corpus, control =list(tokenizer = NGramTokenizer))
 improved_ngrams <- TermDocumentMatrix(improvement_corpus, control =list(tokenizer = NGramTokenizer))
 
-## Get significance with high statistical significance (p < 0.005)
-computeSigCor <- function(p, n) {
-  t <- qt(1 - p, n)
-  cor <- sqrt(t^2 / (n-2 + t^2))
-  return(cor)
-}
-
-computePValue <- function(r, n) {
-  t <- r * sqrt((n-2) / (1-r^2))
-  return(dt(t, n - 2))
-}
-
-liked_cor <-  0.25
-improve_cor <- 0.25
-liked_p <- computePValue(liked_cor, liked_td$ncol)
-improved_p <- computePValue(improve_cor, improved_td$ncol)
-
-
-## Find and report import n-grams
-message("Performing analysis")
-liked_words <- c("like", "learn", "interest", addLikedWords)
-improve_words <- c("improve", "more", "less", addImprovedWords)
-findAllAssocs <- function(td, wordList) {
-  for (w in wordList) {
-    cat("Words associated with", w, "\n")
-    print(findAssocs(td, w, liked_cor))
-    cat("\n")
-  }
-}
-
 ## Find and report longest comments
+message("Finding longest comments")
 liked_lengths <- sapply(liked, function (x) length(strsplit(x, " ")[[1]]))
 improvement_lengths <- sapply(improvement, function (x) length(strsplit(x, " ")[[1]]))
 quant_liked <- quantile(liked_lengths, 0.95)
@@ -116,6 +65,16 @@ for (comment in comments) {
   cat(comment, '\n')
   cat('\n')
 }
+
+
+## Find and report import n-grams
+message("Performing association analysis")
+liked_words <- c("like", "learn", "interest", addLikedWords)
+improve_words <- c("improve", "more", "less", addImprovedWords)
+cor <- 0.25
+liked_p <- computePValue(cor, liked_td$ncol)
+improved_p <- computePValue(cor, improved_td$ncol)
+
 #' ## Association Analysis
 #' ### Metadata
 #' Found associations have correlation > 0.25 
@@ -135,17 +94,17 @@ for (comment in comments) {
 #' 
 #' #### Single Word Associations- Liked Items
 
-findAllAssocs(liked_td, liked_words)
+findAllAssocs(liked_td, liked_words, cor)
 
 #' #### Single World Associations - Items for Improvement
-findAllAssocs(improved_td, improve_words)
+findAllAssocs(improved_td, improve_words, cor)
 
 #' ### N-Gram Analysis
 #' 
 #' Note that n-grams generated, by default, were up to 3 words long.
 #'  
 #' #### N-Gram Associations- Liked Items
-findAllAssocs(liked_ngrams, liked_words)
+findAllAssocs(liked_ngrams, liked_words, cor)
 
 #' #### N-Gram Associations- Items for Improvement
-findAllAssocs(improved_ngrams, improve_words)
+findAllAssocs(improved_ngrams, improve_words, cor)
