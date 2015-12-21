@@ -1,0 +1,7 @@
+## Ignore these since it is raw data
+*.csv
+*.html
+
+## Ignore these since R makes them
+.Rhistory
+.RData
